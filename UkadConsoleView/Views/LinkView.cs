@@ -1,154 +1,119 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using UKAD.Interfaces.View;
-using UKAD.Models;
-using UKAD.Repository;
+using UKAD.Logic.Crawlers;
+using UKAD.Logic.Filters;
+using UKAD.Logic.Models;
+using UKAD.Logic.Services;
 
 namespace UKADConsoleView.Views
 {
-    public class LinkView : ILinkView
+    public class LinkView
     {
-        private IResultWritter ResultWritter { get; set; }
+        private readonly ResultWritter ConsoleWritter;
 
-        public LinkView(IResultWritter writter)
+        public LinkView(ResultWritter consoleWritter)
         {
-            ResultWritter = writter;
+            ConsoleWritter = consoleWritter;
         }
 
-        public string ReadUrl()
+        public virtual void StartWork()
         {
-            ResultWritter.WriteLine("Please enter a basic url");
-            return ResultWritter.ReadLine();
+            ConsoleWritter.WriteLine("Please enter a url");
+            var inputUrl = ConsoleWritter.ReadLine();
+
+            var linkProcessing = new LinkProcessing();
+            var linkFilter = new LinkFilter();
+            var requestService = new RequestService();
+
+            if (linkFilter.IsCorrectLink(inputUrl) == false)
+            {
+                ConsoleWritter.WriteLine("Bad url");
+                return;
+            }
+
+            ConsoleWritter.WriteLine("Program is working, please don't close it.");
+
+            var viewLinks    = new ViewCrawler   (requestService, linkProcessing, linkFilter).GetViewLinks(inputUrl);
+            var sitemapLinks = new SitemapCrawler(requestService, linkProcessing, linkFilter).GetSitemapLinks(inputUrl);
+
+            var allLinks = viewLinks.Except(sitemapLinks, (x, y) => x.Url == y.Url)
+                                   .Concat(sitemapLinks)
+                                   .ToList();
+
+            PrintWithCaption(sitemapLinks.Except(viewLinks, (x, y) => x.Url == y.Url), "\t Urls FOUNDED IN SITEMAP.XML but not founded after crawling a web site");
+            PrintWithCaption(viewLinks.Except(sitemapLinks, (x, y) => x.Url == y.Url), "\tUrls FOUNDED BY CRAWLING THE WEBSITE but not in sitemap.xml");
+            PrintWithTime(allLinks.OrderBy(p=>p.TimeResponse));
+            PrintCounts(viewLinks.Count(), sitemapLinks.Count(), allLinks.Count());
         }
 
-        public bool PrintAllInformation(LinkRepository linkRepository)
+
+        public virtual void PrintCounts(int viewCount, int sitemapCount, int allCount)
         {
-            ResultWritter.WriteLine("\n\n\n");
-            ResultWritter.WriteLine("\t Urls FOUNDED IN SITEMAP.XML but not founded after crawling a web site");
-            PrintList(linkRepository.GetLinksAsync(p=>p.LocationUrl == Enums.LocationUrl.InSiteMap).Result);
-
-            ResultWritter.WriteLine("\n\n\n");
-            ResultWritter.WriteLine("\tUrls FOUNDED BY CRAWLING THE WEBSITE but not in sitemap.xml");
-            PrintList(linkRepository.GetLinksAsync(p => p.LocationUrl == Enums.LocationUrl.InView).Result);
-
-            ResultWritter.WriteLine("\n\n\n");
-            ResultWritter.WriteLine("\t Timing");
-            PrintWithTime(linkRepository.GetLinksAsync().Result);
-            ResultWritter.WriteLine("\n\n\n");
-
-            PrintCounts(linkRepository);
-
-            return true;
+            ConsoleWritter.WriteLine($"All links found {allCount} \n");
+            ConsoleWritter.WriteLine($"Urls found in sitemap: {sitemapCount} \n");
+            ConsoleWritter.WriteLine($"Urls(html documents) found after crawling a website: {viewCount} \n");
+        }
+    
+        public virtual void PrintWithCaption(IEnumerable<Link> list,string caption)
+        {
+            ConsoleWritter.WriteLine("\n\n\n");
+            ConsoleWritter.WriteLine(caption);
+            PrintList(list);
         }
 
-        public bool PrintProcessingMessage()
-        {
-            ResultWritter.WriteLine("Program is working, please don't close it.");
-            return true;
-        }
-
-        public bool PrintErrorMessage(string errorMessage)
-        {
-            ResultWritter.WriteLine(errorMessage);
-            return true;
-        }
-
-        /// <summary>
-        /// Caclulate links and print it to console
-        /// </summary>
-        public bool PrintCounts(LinkRepository linkRepository)
-        {
-            int allCount = linkRepository.GetLinksAsync().Result.Count();
-            int sitemapCount = allCount - linkRepository.GetLinksAsync(p => p.LocationUrl == Enums.LocationUrl.InView).Result.Count();
-            int viewCount = allCount - linkRepository.GetLinksAsync(p => p.LocationUrl == Enums.LocationUrl.InSiteMap).Result.Count();
-
-            ResultWritter.WriteLine($"All founded urls - {allCount} \n");
-            ResultWritter.WriteLine($"Urls found in sitemap: {sitemapCount} \n");
-            ResultWritter.WriteLine($"Urls(html documents) found after crawling a website: {viewCount} \n");
-
-            return true;
-        }
-
-        /// <summary>
-        /// Print input list to console
-        /// </summary>
-        public bool PrintList(IEnumerable<Link> links)
+        public virtual void PrintList(IEnumerable<Link> links)
         {
             WriteRaw('_');
             int i = 1;
             foreach (var link in links)
             {
-                ResultWritter.WriteLine("\n");
-                ResultWritter.WriteLine($" {i}) " + link.Url);
+                ConsoleWritter.WriteLine("\n");
+                ConsoleWritter.WriteLine($" {i}) " + link.Url);
                 WriteRaw('_');
                 i++;
             }
-
-            return true;
         }
 
-        /// <summary>
-        /// Print to console all object from list with url and time
-        /// </summary>
-        public bool PrintWithTime(IEnumerable<Link> links)
+        public virtual void WriteRaw(char symbol)
+        {
+            for (int i = 0; i < ConsoleWritter.GetOutputWidth(); i++)
+                ConsoleWritter.Write(symbol.ToString());
+        }
+
+        public virtual void PrintWithTime(IEnumerable<Link> links)
         {
             int i = 1;
             WriteRaw('_');
-            ResultWritter.Write("|  Url");
+            ConsoleWritter.Write("|  Url");
 
-            ResultWritter.ChangeCursorPositonX(ResultWritter.GetOutputWidth() - 16);
+            ConsoleWritter.ChangeCursorPositonX(ConsoleWritter.GetOutputWidth() - 16);
 
-            ResultWritter.WriteLine(" | Timing (ms)");
+            ConsoleWritter.WriteLine(" | Timing (ms)");
             WriteRaw('_');
             foreach (var link in links)
             {
-                if (link.Url.Length > ResultWritter.GetOutputWidth() - 25)
-                {
-                    link.Url = InsertNewLine(link.Url, (ResultWritter.GetOutputWidth() - 25));
-                }
+                if (link.Url.Length > ConsoleWritter.GetOutputWidth() - 25)
+                    link.Url = SeparateWithWidth(link.Url, (ConsoleWritter.GetOutputWidth() - 25));
 
-                ResultWritter.WriteLine("\n|  ");
-                ResultWritter.Write($"{i}) " + link.Url);
+                ConsoleWritter.WriteLine("\n|  ");
+                ConsoleWritter.Write($"{i}) " + link.Url);
 
-                ResultWritter.ChangeCursorPositonX(ResultWritter.GetOutputWidth() - 15);
+                ConsoleWritter.ChangeCursorPositonX(ConsoleWritter.GetOutputWidth() - 15);
 
-                ResultWritter.WriteLine(" | " + link.TimeDuration + "ms  |" );
+                ConsoleWritter.WriteLine(" | " + link.TimeResponse + "ms  |");
                 i++;
                 WriteRaw('_');
             }
-
-            return true;
         }
-
-        /// <summary>
-        /// Split input string on the many, insert a \n beetwen and return as one string 
-        /// </summary>
-        /// <param name="input"></param>
-        /// <returns></returns>
-        public string InsertNewLine(string input,int maxWidth)
+        public virtual string SeparateWithWidth(string input, int maxWidth)
         {
             int insertSymbols = input.Length / maxWidth;
-            
+
             for (int i = 1; i <= insertSymbols; i++)
-            {
-                input = input.Insert(maxWidth * i,"\n   ");
-            }
+                input = input.Insert(maxWidth * i, "\n   ");
+
 
             return input;
-        }
-
-        /// <summary>
-        /// Print line with input symbol. Width = console.BufferWidth at the call moment
-        /// </summary>
-        /// <param name="symbol"></param>
-        /// <returns></returns>
-        public bool WriteRaw(char symbol)
-        {
-            for(int i = 0; i < ResultWritter.GetOutputWidth(); i++)
-            {
-                ResultWritter.Write(symbol.ToString());
-            }
-            return true;
         }
     }
 }

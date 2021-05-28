@@ -6,8 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\UKADLocalStorage\UKADLocalStorage\UKADLocalStorage.csproj" />
     <ProjectReference Include="..\..\UkadMain\UKAD\UKAD.csproj" />
+    <ProjectReference Include="..\..\UKADMain\UKAD\UKAD.Logic.csproj" />
   </ItemGroup>
 
 </Project>
