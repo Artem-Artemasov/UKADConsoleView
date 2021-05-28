@@ -93,7 +93,7 @@ namespace UKADConsoleView.Views
             foreach (var link in links)
             {
                 if (link.Url.Length > ConsoleWritter.GetOutputWidth() - 25)
-                    link.Url = SeparateWithWidth(link.Url, (ConsoleWritter.GetOutputWidth() - 25));
+                    link.Url = DivideWithWidth(link.Url, (ConsoleWritter.GetOutputWidth() - 25));
 
                 ConsoleWritter.WriteLine("\n|  ");
                 ConsoleWritter.Write($"{i}) " + link.Url);
