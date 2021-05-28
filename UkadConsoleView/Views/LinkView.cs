@@ -105,7 +105,7 @@ namespace UKADConsoleView.Views
                 WriteRaw('_');
             }
         }
-        public virtual string SeparateWithWidth(string input, int maxWidth)
+        public virtual string DivideWithWidth(string input, int maxWidth)
         {
             int insertSymbols = input.Length / maxWidth;
 
