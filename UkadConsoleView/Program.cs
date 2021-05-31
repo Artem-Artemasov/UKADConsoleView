@@ -1,18 +1,27 @@
-﻿using System;
-using UKADConsoleView.Views;
+﻿using LinkFounder.Logic.Services;
+using LinkFounder.Logic.Validators;
+using LinkFounder.Logic.Crawlers;
+using LinkFounder.ConsoleView;
 
-
-namespace UkadConsoleView
+namespace LinkFounder.ConsoleView
 {
     class Program
     {
         static void Main(string[] args)
         {
-            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            var RequestService = new RequestService();
+            var LinkParser = new LinkParser();
+            var LinkConverter = new LinkConverter();
+            var LinkValidator = new LinkValidator();
 
-            var LinkView = new LinkView(new ResultWritter());
+            var HtmlCrawler = new HtmlCrawler(RequestService, LinkConverter, LinkParser, LinkValidator);
+            var SitemapCrawler = new SitemapCrawler(RequestService, LinkConverter, LinkParser, LinkValidator);
 
+            var ConsoleView = new ResultWritter();
+
+            var LinkView = new LinkView(ConsoleView, HtmlCrawler, SitemapCrawler);
             LinkView.StartWork();
+
         }
     }
 }

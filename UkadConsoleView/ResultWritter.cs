@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace UKADConsoleView.Views
+namespace LinkFounder.ConsoleView
 {
     public class ResultWritter
     {

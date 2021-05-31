@@ -6,8 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\UkadMain\UKAD\UKAD.csproj" />
-    <ProjectReference Include="..\..\UKADMain\UKAD\UKAD.Logic.csproj" />
+    <ProjectReference Include="..\..\LinkFounder.Logic\LinkFounder\LinkFounder.Logic.csproj" />
   </ItemGroup>
 
 </Project>
